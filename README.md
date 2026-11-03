@@ -2,7 +2,6 @@
 
 Compact Windows x64 monitor for physical disk temperature and activity.
 
-Current version: **0.3.0**
 
 - Single-file native executable; no runtime resources or helper processes.
 - Integrated storage engine discovers SATA, NVMe, USB/UASP and supported RAID devices.
