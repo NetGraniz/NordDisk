@@ -76,7 +76,7 @@ std::wstring DiskMonitor::ConnectionName(int commandType)
     case 27:
         return L"RAID";
     default:
-        return L"SATA / диск";
+        return L"SATA / Disk";
     }
 }
 
@@ -292,7 +292,7 @@ void DiskMonitor::Run(HWND target)
         update->disks = BuildDiskSnapshots(engine);
         if (update->disks.empty())
         {
-            update->error = L"Диски не обнаружены. Запустите NordDisk от администратора.";
+            update->error = L"No disks detected. Run NordDisk as administrator.";
         }
 
         std::vector<int> ids;

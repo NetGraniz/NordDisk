@@ -169,8 +169,9 @@ void PaintWindow(HWND window, AppState& state)
     Text(dc, L"NordDisk", titleRect, state.titleFont, RGB(239, 244, 250),
         DT_LEFT | DT_SINGLELINE | DT_VCENTER);
     RECT subtitle{margin, Scale(state, 34), client.right - margin, Scale(state, 56)};
-    std::wstring status = state.loading ? L"Поиск дисков и SMART…" :
-        std::to_wstring(state.disks.size()) + L" физических дисков • SMART";
+    std::wstring status = state.loading ? L"Searching for disks and SMART…" :
+        std::to_wstring(state.disks.size())
+        + (state.disks.size() == 1 ? L" physical disk • SMART" : L" physical disks • SMART");
     Text(dc, status, subtitle, state.smallFont, RGB(118, 132, 149),
         DT_LEFT | DT_SINGLELINE | DT_VCENTER);
 
@@ -208,7 +209,7 @@ void PaintWindow(HWND window, AppState& state)
                 RGB(226, 233, 241), Scale(state, 32)) || state.hasMarquee;
             RECT details{model.left, row.top + Scale(state, 24), model.right,
                 row.top + Scale(state, 41)};
-            std::wstring detail = L"Диск " + std::to_wstring(disk.physicalDriveId)
+            std::wstring detail = L"Disk " + std::to_wstring(disk.physicalDriveId)
                 + L" • " + disk.connection;
             Text(dc, detail, details, state.smallFont, RGB(112, 126, 143),
                 DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
@@ -276,10 +277,10 @@ bool PointInClose(HWND window, AppState& state, LPARAM position)
 void ShowContextMenu(HWND window, AppState& state)
 {
     HMENU menu = ::CreatePopupMenu();
-    ::AppendMenuW(menu, MF_STRING | (state.alwaysOnTop ? MF_CHECKED : 0), 1, L"Всегда сверху");
-    ::AppendMenuW(menu, MF_STRING, 2, L"О программе");
+    ::AppendMenuW(menu, MF_STRING | (state.alwaysOnTop ? MF_CHECKED : 0), 1, L"Always on top");
+    ::AppendMenuW(menu, MF_STRING, 2, L"About");
     ::AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    ::AppendMenuW(menu, MF_STRING, 3, L"Выход");
+    ::AppendMenuW(menu, MF_STRING, 3, L"Exit");
     POINT cursor{};
     ::GetCursorPos(&cursor);
     const UINT command = ::TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON,
@@ -294,10 +295,10 @@ void ShowContextMenu(HWND window, AppState& state)
     else if (command == 2)
     {
         ::MessageBoxW(window,
-            L"NordDisk\nЛёгкий монитор температуры и нагрузки физических дисков.\n\n"
-            L"Единый встроенный модуль диагностики SATA, NVMe, USB и RAID.\n"
-            L"Сведения о сторонних лицензиях находятся в документации проекта.",
-            L"О программе", MB_OK | MB_ICONINFORMATION);
+            L"NordDisk\nLightweight monitor for physical disk temperature and activity.\n\n"
+            L"Unified built-in diagnostic module for SATA, NVMe, USB, and RAID devices.\n"
+            L"Third-party license information is available in the project documentation.",
+            L"About NordDisk", MB_OK | MB_ICONINFORMATION);
     }
     else if (command == 3)
     {
