@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 - 2026-11-03
 
 - Added a dedicated NordDisk application icon and embedded it in the Windows executable.
 - Removed decorative drive tiles and reduced the window and row dimensions.
