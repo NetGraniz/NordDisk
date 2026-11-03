@@ -3,7 +3,6 @@
 #include "resource.h"
 
 #include <algorithm>
-#include <cmath>
 #include <memory>
 #include <shellapi.h>
 #include <string>
@@ -17,7 +16,7 @@ namespace
 {
 constexpr wchar_t kClassName[] = L"NordDisk.Native.Window";
 constexpr wchar_t kTitle[] = L"NordDisk";
-constexpr int kBaseWidth = 372;
+constexpr int kBaseWidth = 336;
 constexpr int kHeaderHeight = 64;
 constexpr int kRowHeight = 58;
 constexpr int kFooterHeight = 10;
@@ -204,7 +203,7 @@ void PaintWindow(HWND window, AppState& state)
 
             const auto& disk = state.disks[static_cast<size_t>(index)];
             RECT model{row.left + Scale(state, 12), row.top + Scale(state, 4),
-                row.right - Scale(state, 116), row.top + Scale(state, 25)};
+                row.right - Scale(state, 70), row.top + Scale(state, 25)};
             state.hasMarquee = MarqueeText(dc, disk.model, model, state.modelFont,
                 RGB(226, 233, 241), Scale(state, 32)) || state.hasMarquee;
             RECT details{model.left, row.top + Scale(state, 24), model.right,
@@ -214,19 +213,12 @@ void PaintWindow(HWND window, AppState& state)
             Text(dc, detail, details, state.smallFont, RGB(112, 126, 143),
                 DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
 
-            RECT temperature{row.right - Scale(state, 109), row.top + Scale(state, 4),
-                row.right - Scale(state, 52), row.top + Scale(state, 29)};
+            RECT temperature{row.right - Scale(state, 65), row.top + Scale(state, 4),
+                row.right - Scale(state, 10), row.top + Scale(state, 29)};
             const std::wstring tempText = disk.hasTemperature
                 ? std::to_wstring(disk.temperature) + L"°C" : L"N/A";
             Text(dc, tempText, temperature, state.valueFont, TemperatureColor(disk),
                 DT_RIGHT | DT_SINGLELINE | DT_VCENTER);
-            RECT activityText{row.right - Scale(state, 48), row.top + Scale(state, 5),
-                row.right - Scale(state, 10), row.top + Scale(state, 28)};
-            const std::wstring activity = disk.hasActivity
-                ? std::to_wstring(static_cast<int>(std::lround(disk.activity))) + L"%" : L"—";
-            Text(dc, activity, activityText, state.modelFont, RGB(91, 169, 255),
-                DT_RIGHT | DT_SINGLELINE | DT_VCENTER);
-
             RECT track{row.left + Scale(state, 12), row.bottom - Scale(state, 8),
                 row.right - Scale(state, 10), row.bottom - Scale(state, 4)};
             Rounded(dc, track, RGB(40, 48, 58), Scale(state, 3));
