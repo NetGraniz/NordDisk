@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 - 2026-11-03
+
+- Translated the complete application interface to English.
+- Added grammatically correct singular and plural disk-count labels.
+- Kept disk discovery, temperature monitoring, and activity sampling unchanged.
+
 ## 0.3.0 - 2026-11-03
 
 - Removed the numeric disk activity percentage from each row.
