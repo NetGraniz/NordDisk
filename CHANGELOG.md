@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Added a dedicated NordDisk application icon and embedded it in the Windows executable.
+- Removed decorative drive tiles and reduced the window and row dimensions.
+- Replaced truncated disk model names with an overflow-only marquee.
+- Simplified the header status text while retaining temperature and activity readings.
+
 ## 0.1.0 - 2026-11-03
 
 First integrated NordDisk release.

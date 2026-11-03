@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "disk_monitor.h"
+#include "resource.h"
 
 #include <algorithm>
 #include <cmath>
@@ -16,11 +17,14 @@ namespace
 {
 constexpr wchar_t kClassName[] = L"NordDisk.Native.Window";
 constexpr wchar_t kTitle[] = L"NordDisk";
-constexpr int kBaseWidth = 424;
-constexpr int kHeaderHeight = 72;
-constexpr int kRowHeight = 70;
-constexpr int kFooterHeight = 14;
-constexpr int kMargin = 12;
+constexpr int kBaseWidth = 372;
+constexpr int kHeaderHeight = 64;
+constexpr int kRowHeight = 58;
+constexpr int kFooterHeight = 10;
+constexpr int kMargin = 10;
+constexpr UINT_PTR kMarqueeTimerId = 1;
+constexpr UINT kMarqueeIntervalMs = 33;
+constexpr ULONGLONG kMarqueePixelsPerSecond = 28;
 
 struct AppState
 {
@@ -37,6 +41,7 @@ struct AppState
     bool loading = true;
     bool alwaysOnTop = true;
     bool userMoved = false;
+    bool hasMarquee = false;
 };
 
 int Scale(const AppState& state, int value)
@@ -103,6 +108,43 @@ void Text(HDC dc, const std::wstring& text, RECT rect, HFONT font,
     ::SelectObject(dc, old);
 }
 
+bool MarqueeText(HDC dc, const std::wstring& text, const RECT& rect, HFONT font,
+    COLORREF color, int gap)
+{
+    if (text.empty() || rect.right <= rect.left)
+    {
+        return false;
+    }
+
+    const HGDIOBJ old = ::SelectObject(dc, font);
+    ::SetTextColor(dc, color);
+    ::SetBkMode(dc, TRANSPARENT);
+
+    SIZE extent{};
+    ::GetTextExtentPoint32W(dc, text.c_str(), static_cast<int>(text.size()), &extent);
+    const int verticalSpace = static_cast<int>(rect.bottom - rect.top - extent.cy);
+    const int y = rect.top + std::max(0, verticalSpace / 2);
+    if (extent.cx <= rect.right - rect.left)
+    {
+        ::ExtTextOutW(dc, rect.left, y, ETO_CLIPPED, &rect, text.c_str(),
+            static_cast<UINT>(text.size()), nullptr);
+    }
+    else
+    {
+        const int cycle = extent.cx + gap;
+        const auto travelled = ::GetTickCount64() * kMarqueePixelsPerSecond / 1000;
+        const int offset = static_cast<int>(travelled % static_cast<ULONGLONG>(cycle));
+        const int firstX = rect.left - offset;
+        ::ExtTextOutW(dc, firstX, y, ETO_CLIPPED, &rect, text.c_str(),
+            static_cast<UINT>(text.size()), nullptr);
+        ::ExtTextOutW(dc, firstX + cycle, y, ETO_CLIPPED, &rect, text.c_str(),
+            static_cast<UINT>(text.size()), nullptr);
+    }
+
+    ::SelectObject(dc, old);
+    return extent.cx > rect.right - rect.left;
+}
+
 COLORREF TemperatureColor(const DiskSnapshot& disk)
 {
     if (!disk.hasTemperature) return RGB(126, 136, 148);
@@ -120,15 +162,16 @@ void PaintWindow(HWND window, AppState& state)
     HDC dc = ::CreateCompatibleDC(target);
     HBITMAP bitmap = ::CreateCompatibleBitmap(target, client.right, client.bottom);
     const HGDIOBJ oldBitmap = ::SelectObject(dc, bitmap);
+    state.hasMarquee = false;
 
     Fill(dc, client, RGB(14, 18, 23));
     const int margin = Scale(state, kMargin);
-    RECT titleRect{margin, Scale(state, 12), client.right - Scale(state, 52), Scale(state, 40)};
+    RECT titleRect{margin, Scale(state, 9), client.right - Scale(state, 52), Scale(state, 36)};
     Text(dc, L"NordDisk", titleRect, state.titleFont, RGB(239, 244, 250),
         DT_LEFT | DT_SINGLELINE | DT_VCENTER);
-    RECT subtitle{margin, Scale(state, 39), client.right - margin, Scale(state, 61)};
+    RECT subtitle{margin, Scale(state, 34), client.right - margin, Scale(state, 56)};
     std::wstring status = state.loading ? L"Поиск дисков и SMART…" :
-        std::to_wstring(state.disks.size()) + L" физических дисков • SMART + нагрузка";
+        std::to_wstring(state.disks.size()) + L" физических дисков • SMART";
     Text(dc, status, subtitle, state.smallFont, RGB(118, 132, 149),
         DT_LEFT | DT_SINGLELINE | DT_VCENTER);
 
@@ -156,43 +199,36 @@ void PaintWindow(HWND window, AppState& state)
         {
             const int visual = index - start;
             const int top = Scale(state, kHeaderHeight + visual * kRowHeight);
-            RECT row{margin, top, client.right - margin, top + Scale(state, kRowHeight - 8)};
-            Rounded(dc, row, RGB(25, 31, 38), Scale(state, 12));
-
-            RECT icon{row.left + Scale(state, 12), row.top + Scale(state, 13),
-                row.left + Scale(state, 44), row.top + Scale(state, 45)};
-            Rounded(dc, icon, RGB(34, 43, 53), Scale(state, 8));
-            RECT dot{icon.left + Scale(state, 7), icon.top + Scale(state, 8),
-                icon.right - Scale(state, 7), icon.bottom - Scale(state, 8)};
-            Rounded(dc, dot, RGB(72, 155, 255), Scale(state, 4));
+            RECT row{margin, top, client.right - margin, top + Scale(state, kRowHeight - 6)};
+            Rounded(dc, row, RGB(25, 31, 38), Scale(state, 10));
 
             const auto& disk = state.disks[static_cast<size_t>(index)];
-            RECT model{row.left + Scale(state, 54), row.top + Scale(state, 8),
-                row.right - Scale(state, 125), row.top + Scale(state, 31)};
-            Text(dc, disk.model, model, state.modelFont, RGB(226, 233, 241),
-                DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
-            RECT details{model.left, row.top + Scale(state, 31), model.right,
-                row.top + Scale(state, 50)};
+            RECT model{row.left + Scale(state, 12), row.top + Scale(state, 4),
+                row.right - Scale(state, 116), row.top + Scale(state, 25)};
+            state.hasMarquee = MarqueeText(dc, disk.model, model, state.modelFont,
+                RGB(226, 233, 241), Scale(state, 32)) || state.hasMarquee;
+            RECT details{model.left, row.top + Scale(state, 24), model.right,
+                row.top + Scale(state, 41)};
             std::wstring detail = L"Диск " + std::to_wstring(disk.physicalDriveId)
                 + L" • " + disk.connection;
             Text(dc, detail, details, state.smallFont, RGB(112, 126, 143),
                 DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
 
-            RECT temperature{row.right - Scale(state, 118), row.top + Scale(state, 7),
-                row.right - Scale(state, 60), row.top + Scale(state, 34)};
+            RECT temperature{row.right - Scale(state, 109), row.top + Scale(state, 4),
+                row.right - Scale(state, 52), row.top + Scale(state, 29)};
             const std::wstring tempText = disk.hasTemperature
                 ? std::to_wstring(disk.temperature) + L"°C" : L"N/A";
             Text(dc, tempText, temperature, state.valueFont, TemperatureColor(disk),
                 DT_RIGHT | DT_SINGLELINE | DT_VCENTER);
-            RECT activityText{row.right - Scale(state, 57), row.top + Scale(state, 8),
-                row.right - Scale(state, 12), row.top + Scale(state, 33)};
+            RECT activityText{row.right - Scale(state, 48), row.top + Scale(state, 5),
+                row.right - Scale(state, 10), row.top + Scale(state, 28)};
             const std::wstring activity = disk.hasActivity
                 ? std::to_wstring(static_cast<int>(std::lround(disk.activity))) + L"%" : L"—";
             Text(dc, activity, activityText, state.modelFont, RGB(91, 169, 255),
                 DT_RIGHT | DT_SINGLELINE | DT_VCENTER);
 
-            RECT track{row.left + Scale(state, 54), row.bottom - Scale(state, 10),
-                row.right - Scale(state, 12), row.bottom - Scale(state, 6)};
+            RECT track{row.left + Scale(state, 12), row.bottom - Scale(state, 8),
+                row.right - Scale(state, 10), row.bottom - Scale(state, 4)};
             Rounded(dc, track, RGB(40, 48, 58), Scale(state, 3));
             if (disk.hasActivity && disk.activity > 0.0)
             {
@@ -298,6 +334,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         const int rounded = 2;
         ::DwmSetWindowAttribute(window, 33, &rounded, sizeof(rounded));
         ResizeWindow(window, *state, true);
+        ::SetTimer(window, kMarqueeTimerId, kMarqueeIntervalMs, nullptr);
         state->monitor.Start(window);
         return 0;
     }
@@ -325,6 +362,12 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             state->scroll += GET_WHEEL_DELTA_WPARAM(wParam) < 0 ? 1 : -1;
             state->scroll = std::clamp(state->scroll, 0,
                 std::max(0, static_cast<int>(state->disks.size()) - state->visibleRows));
+            ::InvalidateRect(window, nullptr, FALSE);
+        }
+        return 0;
+    case WM_TIMER:
+        if (wParam == kMarqueeTimerId && state && state->hasMarquee)
+        {
             ::InvalidateRect(window, nullptr, FALSE);
         }
         return 0;
@@ -361,6 +404,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
     case WM_ERASEBKGND:
         return 1;
     case WM_DESTROY:
+        ::KillTimer(window, kMarqueeTimerId);
         if (state)
         {
             state->monitor.Stop();
@@ -440,8 +484,10 @@ int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int)
     windowClass.lpfnWndProc = WindowProc;
     windowClass.hInstance = instance;
     windowClass.hCursor = ::LoadCursorW(nullptr, IDC_ARROW);
-    windowClass.hIcon = ::LoadIconW(nullptr, IDI_APPLICATION);
-    windowClass.hIconSm = windowClass.hIcon;
+    windowClass.hIcon = ::LoadIconW(instance, MAKEINTRESOURCEW(IDI_NORDDISK));
+    windowClass.hIconSm = static_cast<HICON>(::LoadImageW(instance,
+        MAKEINTRESOURCEW(IDI_NORDDISK), IMAGE_ICON,
+        ::GetSystemMetrics(SM_CXSMICON), ::GetSystemMetrics(SM_CYSMICON), 0));
     windowClass.hbrBackground = static_cast<HBRUSH>(::GetStockObject(BLACK_BRUSH));
     windowClass.lpszClassName = kClassName;
     if (!::RegisterClassExW(&windowClass)) return 5;

@@ -1,6 +1,7 @@
 /bin/
 /obj/
 /verify/
+/verify-*/
 /visual/
 *.user
 *.suo

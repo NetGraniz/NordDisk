@@ -35,7 +35,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\storage_engine;$(ProjectDir)src\storage_engine\platform_support;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)src;$(ProjectDir)src\storage_engine;$(ProjectDir)src\storage_engine\platform_support;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>UNICODE;_UNICODE;WIN32_LEAN_AND_MEAN;NOMINMAX;_WIN32_WINNT=0x0A00;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -71,6 +71,10 @@
   <ItemGroup>
     <ClInclude Include="src\stdafx.h" />
     <ClInclude Include="src\disk_monitor.h" />
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="NordDisk.rc" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="NordDisk.manifest" />
